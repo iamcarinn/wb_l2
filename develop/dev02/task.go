@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"os"
+)
+
 /*
 === Задача на распаковку ===
 
@@ -19,5 +24,24 @@ package main
 */
 
 func main() {
+    string input_s = "a4bc2d5e"
 
+    output_s, err := Unpack(input_s)
+
+    if err != nil {
+        // ошибочка
+        os.Exit(1)
+    }
+
+    fmt.Printf(output_s)
+}
+
+Unpack(string input_s) string, error {
+    output_s := make([]rune, len(input_s))
+
+    for i, val := []rune(input_s) {
+        if val
+    }
+
+    return string(output_s), err
 }
