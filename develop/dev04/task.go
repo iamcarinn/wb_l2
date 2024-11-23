@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"strings"
+)
+
 /*
 === Поиск анаграмм по словарю ===
 
@@ -20,5 +25,22 @@ package main
 */
 
 func main() {
+	dictionary := []string{"тест", "листок", "пятка", "пятак", "тяпка", "листок", "пятка", "слиток", "столик"}
 
+	fmt.Println(dictionary)
+	fmt.Println(findAnagram(dictionary))
+}
+
+func findAnagram(dictionary []string) map[string]string {
+	if len(dictionary) < 2 {
+		return nil
+	}
+
+	buffer := make(map[string][]string)
+	//
+	// поиск анограм
+	//
+	result := make(map[string][]string)
+
+	return result
 }
