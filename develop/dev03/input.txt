@@ -1,0 +1,5 @@
+100 apple
+50 banana
+25 cherry
+100 apple
+10 fig
