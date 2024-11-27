@@ -1,7 +1,7 @@
 package main
 
 import (
-	"fmt"
+	"sort"
 	"strings"
 )
 
@@ -24,23 +24,57 @@ import (
 Программа должна проходить все тесты. Код должен проходить проверки go vet и golint.
 */
 
-func main() {
-	dictionary := []string{"тест", "листок", "пятка", "пятак", "тяпка", "листок", "пятка", "слиток", "столик"}
+// FindAnagrams ищет множества анаграмм в словаре.
+func FindAnagrams(words *[]string) *map[string][]string {
+	anagramGroups := make(map[string][]string)
+	seenWords := make(map[string]bool)
 
-	fmt.Println(dictionary)
-	fmt.Println(findAnagram(dictionary))
-}
+	for _, word := range *words {
+		// Приводим слово к нижнему регистру
+		lowerWord := strings.ToLower(word)
 
-func findAnagram(dictionary []string) map[string]string {
-	if len(dictionary) < 2 {
-		return nil
+		// Пропускаем слово, если оно уже было добавлено
+		if seenWords[lowerWord] {
+			continue
+		}
+
+		// Создаем "ключ анаграмм" для текущего слова
+		key := sortString(lowerWord)
+
+		// Добавляем слово в соответствующую группу
+		anagramGroups[key] = append(anagramGroups[key], lowerWord)
+
+		// Помечаем слово как добавленное
+		seenWords[lowerWord] = true
 	}
 
-	buffer := make(map[string][]string)
-	//
-	// поиск анограм
-	//
+	// Создаем результирующую мапу, исключая группы из одного элемента
 	result := make(map[string][]string)
+	for _, group := range anagramGroups {
+		if len(group) > 1 {
+			sort.Strings(group) // Сортируем группу
+			result[group[0]] = group
+		}
+	}
 
-	return result
+	return &result
+}
+
+// sortString возвращает отсортированную строку для ключа анаграмм.
+func sortString(s string) string {
+	runes := []rune(s)
+	sort.Slice(runes, func(i, j int) bool {
+		return runes[i] < runes[j]
+	})
+	return string(runes)
+}
+
+func main() {
+	words := []string{"пятак", "пятка", "тяпка", "листок", "слиток", "столик", "аптек", "пятак", "Пятка"}
+	result := FindAnagrams(&words)
+
+	// Вывод результата
+	for key, group := range *result {
+		println(key + ": " + strings.Join(group, ", "))
+	}
 }
