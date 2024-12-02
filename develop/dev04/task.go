@@ -24,35 +24,35 @@ import (
 Программа должна проходить все тесты. Код должен проходить проверки go vet и golint.
 */
 
-// FindAnagrams ищет множества анаграмм в словаре.
+// Функция поиска всех множеств анаграмм по словарю
 func FindAnagrams(words *[]string) *map[string][]string {
-	anagramGroups := make(map[string][]string)
-	seenWords := make(map[string]bool)
+	anagramGroups := make(map[string][]string)	// временная мапа для групп анаграмм, где ключ - сортированное слово
+	seenWords := make(map[string]bool)	// мапа слов, кот. уже были добавлены
 
 	for _, word := range *words {
-		// Приводим слово к нижнему регистру
+		// приводим к нижнемсу регистру
 		lowerWord := strings.ToLower(word)
 
-		// Пропускаем слово, если оно уже было добавлено
+		// пропуск добавленного слова
 		if seenWords[lowerWord] {
 			continue
 		}
 
-		// Создаем "ключ анаграмм" для текущего слова
+		// создаем ключ
 		key := sortString(lowerWord)
 
-		// Добавляем слово в соответствующую группу
+		// добавление слова в группу
 		anagramGroups[key] = append(anagramGroups[key], lowerWord)
 
-		// Помечаем слово как добавленное
+		// помечаем слово как добавленное
 		seenWords[lowerWord] = true
 	}
 
-	// Создаем результирующую мапу, исключая группы из одного элемента
+	// итоговая мапа без групп из одного эл-та
 	result := make(map[string][]string)
 	for _, group := range anagramGroups {
 		if len(group) > 1 {
-			sort.Strings(group) // Сортируем группу
+			sort.Strings(group) // сортируем группу
 			result[group[0]] = group
 		}
 	}
@@ -60,7 +60,7 @@ func FindAnagrams(words *[]string) *map[string][]string {
 	return &result
 }
 
-// sortString возвращает отсортированную строку для ключа анаграмм.
+// Функция возвращает отсортированную строку для ключа анаграмм
 func sortString(s string) string {
 	runes := []rune(s)
 	sort.Slice(runes, func(i, j int) bool {
