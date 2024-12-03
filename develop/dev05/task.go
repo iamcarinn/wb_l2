@@ -27,15 +27,15 @@ import (
 */
 
 type grepOptions struct {
-	after		int		// -A
-	before		int		// -B
-	context		int		// -C
+	after		int	// -A
+	before		int	// -B
+	context		int	// -C
 	count		bool	// -c
 	ignoreCase	bool 	// -i
 	invert 		bool	// -v
 	fixed		bool	// -F
 	lineNum		bool	// -n
-	pattern		string	// строка поиска
+	pattern		string	// паттерн
 }
 
 var options grepOptions
