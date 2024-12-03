@@ -101,14 +101,14 @@ func readInput() ([]string, error) {
 // Функция применяет фильтры к строкам
 func grep(lines []string, options grepOptions) ([]string, int) {
 	var matches []string	// строки для вывода
-	var totalMatches int	// число совпадений
+	totalMatches := 0	// число совпадений
 	// Мама для отслеживания добавленных строк
 	seen := map[int]struct{}{}
 
 	// Нормализуем паттерн, если включен -i
 	pattern := options.pattern
 	if options.ignoreCase {
-		pattern = strings.ToLower(pattern)	// приво
+		pattern = strings.ToLower(pattern)	// приводим к нижнему регистру
 	}
 
 	// Проходим по каждой строке
@@ -154,7 +154,6 @@ func grep(lines []string, options grepOptions) ([]string, int) {
 			}
 		}
 	}
-
 	// Возвращаем найденные строки и общее количество совпадений
 	return matches, totalMatches
 }
