@@ -1,5 +1,10 @@
 package main
 
+import (
+	"fmt"
+	"time"
+)
+
 /*
 === Or channel ===
 
@@ -33,6 +38,63 @@ start := time.Now()
 fmt.Printf(“fone after %v”, time.Since(start))
 */
 
-func main() {
+// Функция объединяет несколько каналов в один. Возвращает канал, который закрывается, как только закрывается любой из входных каналов.
+func or(channels ...<-chan interface{}) <-chan interface{} {
+	// если каналы не переданы, возвращаем закрытый канал
+	if len(channels) == 0 {
+		closedChan := make(chan interface{})
+		close(closedChan)
+		return closedChan
+	}
 
+	// если передан один канал, возвращаем его
+	if len(channels) == 1 {
+		return channels[0]
+	}
+
+	// если передано больше одного канала, то рекурсивно объединяем
+	orDone := make(chan interface{})
+	go func() {
+		defer close(orDone)
+
+		// ожидаем закрытие любого канала
+		switch len(channels) {
+		case 2:
+			select {
+			case <-channels[0]:
+			case <-channels[1]:
+			}
+		default:
+			mid := len(channels) / 2
+			select {
+			case <-or(channels[:mid]...):
+			case <-or(channels[mid:]...):
+			}
+		}
+	}()
+	return orDone
+}
+
+func main() {
+	// Функция для сигнального канала, кот. закроется ч/з заданное время.
+	sig := func(after time.Duration) <-chan interface{} {
+		c := make(chan interface{})
+		go func() {
+			defer close(c)
+			time.Sleep(after)
+		}()
+		return c
+	}
+
+	// or() с несколькими каналами.
+	start := time.Now()
+	<-or(
+		sig(2*time.Hour),
+		sig(5*time.Minute),
+		sig(1*time.Second),
+		sig(1*time.Hour),
+		sig(1*time.Minute),
+	)
+
+	fmt.Printf("Done after %v\n", time.Since(start))
 }
