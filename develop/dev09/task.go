@@ -72,7 +72,7 @@ func downloadHTML(site string) error {
 	return nil
 }
 
-// run запускает выполнение программы
+// Функция содержит алгоритм работы программы
 func run() {
 	flag.Parse()
 	// Проверяем URL
