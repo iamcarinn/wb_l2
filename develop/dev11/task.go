@@ -1,5 +1,14 @@
 package main
 
+import (
+	"encoding/json"
+	"fmt"
+	"log"
+	"net/http"
+	"strconv"
+	"time"
+)
+
 /*
 === HTTP server ===
 
@@ -22,6 +31,114 @@ package main
 	4. Код должен проходить проверки go vet и golint.
 */
 
-func main() {
+type Event struct {
+	ID          int       `json:"id"`
+	Title       string    `json:"title"`
+	Description string    `json:"description"`
+	Date        time.Time `json:"date"`
+}
 
+type Calendar struct {
+	events map[int]Event
+}
+
+// NewCalendar создает новый календарь
+func NewCalendar() *Calendar {
+	return &Calendar{events: make(map[int]Event)}
+}
+
+// CreateEvent добавляет событие в календарь
+func (c *Calendar) CreateEvent(event Event) error {
+	if _, exists := c.events[event.ID]; exists {
+		return fmt.Errorf("event with ID %d already exists", event.ID)
+	}
+	c.events[event.ID] = event
+	return nil
+}
+
+// parseCreateEventRequest парсит данные из POST-запроса и возвращает объект Event
+func parseCreateEventRequest(r *http.Request) (Event, error) {
+	// Парсим тело запроса как форму
+	if err := r.ParseForm(); err != nil {
+		return Event{}, fmt.Errorf("невалидный формат запроса: %v", err)
+	}
+
+	// Извлекаем и валидируем ID события
+	id, err := strconv.Atoi(r.FormValue("id"))
+	if err != nil {
+		return Event{}, fmt.Errorf("невалидный формат ID: %v", err)
+	}
+
+	// Извлекаем заголовок и описание события
+	title := r.FormValue("title")
+	description := r.FormValue("description")
+
+	// Извлекаем и валидируем дату события
+	dateStr := r.FormValue("date")
+	date, err := time.Parse("2006-01-02", dateStr)
+	if err != nil {
+		return Event{}, fmt.Errorf("невалидный формат даты: %v", err)
+	}
+
+	// Возвращаем объект Event
+	return Event{
+		ID:          id,
+		Title:       title,
+		Description: description,
+		Date:        date,
+	}, nil
+}
+
+// writeJSONResponse формирует и отправляет JSON-ответ
+func writeJSONResponse(w http.ResponseWriter, status int, response map[string]string) {
+	// Устанавливаем заголовки ответа
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(status)
+
+	// Кодируем и отправляем JSON-ответ
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		log.Printf("Ошибка при формировании ответа: %v", err)
+	}
+}
+
+// createEventHandler возвращает обработчик для создания событий
+func createEventHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Проверяем метод запроса (должен быть POST)
+		if r.Method != http.MethodPost {
+			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		// Парсим данные из запроса
+		event, err := parseCreateEventRequest(r)
+		if err != nil {
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Добавляем событие в календарь
+		if err := calendar.CreateEvent(event); err != nil {
+			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Успешный ответ
+		writeJSONResponse(w, http.StatusOK, map[string]string{"result": "event created"})
+	}
+}
+
+func main() {
+	// Создаем новый календарь
+	calendar := NewCalendar()
+
+	// Регистрируем обработчик для создания событий
+	http.HandleFunc("/create_event", createEventHandler(calendar))
+
+	// Запускаем HTTP сервер
+	port := ":8080"
+	log.Printf("Запуск HTTP сервера на порту %s", port)
+	if err := http.ListenAndServe(port, nil); err != nil {
+		log.Fatalf("Ошибка запуска сервера: %v", err)
+	}
 }
