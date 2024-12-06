@@ -1,6 +1,7 @@
 ## Запуск сервера
 ```bash
 go run server/server.go
+bash```
 ## Компиляция программы
 ```bash
 go build -o go-telnet task.go
