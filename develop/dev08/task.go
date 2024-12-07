@@ -25,17 +25,17 @@ import (
 	"strings"
 )
 
-// Структура с приглашением к вводу
+// Shell - структура с приглашением к вводу
 type Shell struct {
 	prompt string
 }
 
-// Функция создает новую структуру Shell
+// NewShell создает новую структуру Shell
 func NewShell(prompt string) *Shell {
 	return &Shell{prompt: prompt}
 }
 
-// Функция с циклом обаботки команд
+// Run циклически обрабатывает команды
 func (s *Shell) Run() {
 	reader := bufio.NewReader(os.Stdin) // для чтения из stdin
 

@@ -9,6 +9,7 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+	"path/filepath"
 )
 
 // Тестируем команду cd и pwd
@@ -24,14 +25,21 @@ func TestCdAndPwd(t *testing.T) {
 	// Переходим в временную директорию
 	shell.cmdCD([]string{"cd", tempDir})
 
-	// Проверяем, изменилась ли текущая директория
-	if cwd, _ := os.Getwd(); cwd != tempDir {
+	// Получаем текущую директорию
+	cwd, _ := os.Getwd()
+
+	// Убираем префикс "/private" для macOS
+	cwd = strings.TrimPrefix(cwd, "/private")
+
+	// Нормализуем пути перед сравнением
+	if filepath.Clean(cwd) != filepath.Clean(tempDir) {
 		t.Errorf("Expected directory: %s, got: %s", tempDir, cwd)
 	}
 
 	// Возвращаемся в начальную директорию
 	shell.cmdCD([]string{"cd", initialDir})
 }
+
 
 // Тестируем команду echo
 func TestEcho(t *testing.T) {
