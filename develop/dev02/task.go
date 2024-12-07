@@ -1,8 +1,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"os"
+	"strconv"
+	"unicode"
 )
 
 /*
@@ -24,24 +27,93 @@ import (
 */
 
 func main() {
-    string input_s = "a4bc2d5e"
+	inputS := "a4bc2d5e"
 
-    output_s, err := Unpack(input_s)
+	// Распаковываем строку
+	outputS, err := Unpack(inputS)
 
-    if err != nil {
-        // ошибочка
-        os.Exit(1)
-    }
+	if err != nil {
+		os.Exit(1) // ошибка распаковки строки
+	}
 
-    fmt.Printf(output_s)
+	fmt.Printf(outputS + "\n")
 }
 
-Unpack(string input_s) string, error {
-    output_s := make([]rune, len(input_s))
+// Unpack распаковывает строку с учетом повторений и escape-последовательностей
+func Unpack(input string) (string, error) {
+	// Если строка пуста, возвращаем пустой результат
+	if len(input) == 0 {
+		return "", nil
+	}
 
-    for i, val := []rune(input_s) {
-        if val
-    }
+	result := []rune{}
+	var prev rune    // предыдущий символ (для повторений)
+	var escaped bool // флаг, показывающий, что обр-ся escape-последовательность
 
-    return string(output_s), err
+	//  Цикл по всем символам строки
+	for i, char := range input {
+		switch {
+		case escaped:
+			// если предыдущий символ '\', обрабатываем escape-последовательность
+			if err := processEscape(&result, char); err != nil {
+				return "", err
+			}
+			escaped = false
+			prev = char
+		case char == '\\':
+			// если текущий символ — '\', включаем режим обработки escape
+			escaped = true
+		case unicode.IsDigit(char):
+			// если текущий символ — цифра, повторяем предыдущий символ
+			if err := func() error {
+				var _ int = i
+				return repeatChar(&result, prev, char)
+			}(); err != nil {
+				return "", err
+			}
+		case unicode.IsLetter(char):
+			// если текущий символ — буква, добавляем его в результат
+			prev = appendChar(&result, char)
+		default:
+			// если символ недопустим, возвращаем ошибку
+			return "", errors.New("invalid input string: contains non-alphanumeric characters")
+		}
+	}
+
+	// если строка оканчивается на '\', это ошибка
+	if escaped {
+		return "", errors.New("trailing escape character")
+	}
+
+	return string(result), nil
+}
+
+// processEscape обрабатывает символ после escape
+func processEscape(result *[]rune, char rune) error {
+	// разрешены только цифры и '\'
+	if !unicode.IsDigit(char) && char != '\\' {
+		return errors.New("invalid escape sequence")
+	}
+	*result = append(*result, char) // добавляем символ в результат
+	return nil
+}
+
+// repeatChar повторяет предыдущий символ в зависимости от цифры
+func repeatChar(result *[]rune, prev rune, char rune) error {
+	// если нет предыдущего символа, это ошибка
+	if prev == 0 {
+		return errors.New("invalid input string")
+	}
+	count, _ := strconv.Atoi(string(char)) // конвертируем цифру в число
+	// повторяем предыдущий символ нужное количество раз
+	for j := 1; j < count; j++ {
+		*result = append(*result, prev)
+	}
+	return nil
+}
+
+// appendChar добавляет символ в результат и возвращает его как предыдущий
+func appendChar(result *[]rune, char rune) rune {
+	*result = append(*result, char)
+	return char
 }
