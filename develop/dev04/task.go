@@ -24,7 +24,7 @@ import (
 Программа должна проходить все тесты. Код должен проходить проверки go vet и golint.
 */
 
-// Функция поиска всех множеств анаграмм по словарю
+// FindAnagrams ищет все множества анаграмм по словарю
 func FindAnagrams(words *[]string) *map[string][]string {
 	anagramGroups := make(map[string][]string)	// временная мапа для групп анаграмм, где ключ - сортированное слово
 	seenWords := make(map[string]bool)	// мапа слов, кот. уже были добавлены
