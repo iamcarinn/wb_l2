@@ -33,7 +33,7 @@ import (
 
 */
 
-// Структура, хранящая значения флагов
+// Flags - структура, хранящая значения флагов
 type Flags struct {
 	k int64
 	n bool
@@ -205,4 +205,3 @@ func sortByNumber(lines []string, numeric bool) {
 		return numI < numJ
 	})
 }
-
