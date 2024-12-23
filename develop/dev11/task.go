@@ -128,12 +128,101 @@ func createEventHandler(calendar *Calendar) http.HandlerFunc {
 	}
 }
 
+// updateEventHandler возвращает обработчик для обновления событий
+func updateEventHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Проверяем метод запроса (должен быть POST)
+		if r.Method != http.MethodPost {
+			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		// Парсим данные из запроса
+		event, err := parseCreateEventRequest(r)
+		if err != nil {
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
+			return
+		}
+
+		// Проверяем, существует ли событие с указанным ID
+		existingEvent, exists := calendar.events[event.ID]
+		if !exists {
+			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": fmt.Sprintf("event with ID %d does not exist", event.ID)})
+			return
+		}
+
+		// Обновляем данные события
+		existingEvent.Title = event.Title
+		existingEvent.Description = event.Description
+		existingEvent.Date = event.Date
+		calendar.events[event.ID] = existingEvent
+
+		// Успешный ответ
+		writeJSONResponse(w, http.StatusOK, map[string]string{"result": "event updated"})
+	}
+}
+
+func deleteEventHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		// Проверяем метод запроса (должен быть POST)
+		if r.Method != http.MethodPost {
+			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		// Парсим данные из запроса (только ID требуется для удаления)
+		if err := r.ParseForm(); err != nil {
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid request format"})
+			return
+		}
+
+		// Извлекаем и валидируем ID события
+		id, err := strconv.Atoi(r.FormValue("id"))
+		if err != nil {
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid event ID"})
+			return
+		}
+
+		// Проверяем, существует ли событие с указанным ID
+		if _, exists := calendar.events[id]; !exists {
+			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": fmt.Sprintf("event with ID %d does not exist", id)})
+			return
+		}
+
+		// Удаляем событие
+		delete(calendar.events, id)
+
+		// Успешный ответ
+		writeJSONResponse(w, http.StatusOK, map[string]string{"result": "event deleted"})
+	}
+}
+
+func getEventsForDayHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		
+	}
+}
+
+
+
 func main() {
 	// Создаем новый календарь
 	calendar := NewCalendar()
 
 	// Регистрируем обработчик для создания событий
 	http.HandleFunc("/create_event", createEventHandler(calendar))
+	http.HandleFunc("/update_event", updateEventHandler(calendar))
+	http.HandleFunc("/delete_event", deleteEventHandler(calendar))
+
+	http.HandleFunc("/events_for_day", getEventsForDayHandler(calendar))
+
+	GET /events_for_day
+
 
 	// Запускаем HTTP сервер
 	port := ":8080"
@@ -142,3 +231,5 @@ func main() {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
 }
+
+
