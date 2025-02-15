@@ -5,7 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"os"
 	"strconv"
+	"strings"
 	"time"
 )
 
@@ -31,6 +33,25 @@ import (
 	4. Код должен проходить проверки go vet и golint.
 */
 
+type Config struct {
+	Port int `json:"port"`
+}
+
+func LoadConfig(filename string) (Config, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return Config{}, fmt.Errorf("error opening config file: %v", err)
+	}
+	defer file.Close()
+
+	var config Config
+	if err := json.NewDecoder(file).Decode(&config); err != nil {
+		return Config{}, fmt.Errorf("error decoding config file: %v", err)
+	}
+
+	return config, nil
+}
+
 type Event struct {
 	ID          int       `json:"id"`
 	Title       string    `json:"title"`
@@ -54,6 +75,17 @@ func (c *Calendar) CreateEvent(event Event) error {
 	}
 	c.events[event.ID] = event
 	return nil
+}
+
+// GetEventsForDay получает события на день
+func (c *Calendar) GetEventsForDay(date time.Time) []Event {
+	var events []Event
+	for _, event := range c.events {
+		if event.Date.Equal(date) {
+			events = append(events, event)
+		}
+	}
+	return events
 }
 
 // parseCreateEventRequest парсит данные из POST-запроса и возвращает объект Event
@@ -90,7 +122,7 @@ func parseCreateEventRequest(r *http.Request) (Event, error) {
 }
 
 // writeJSONResponse формирует и отправляет JSON-ответ
-func writeJSONResponse(w http.ResponseWriter, status int, response map[string]string) {
+func writeJSONResponse(w http.ResponseWriter, status int, response interface{}) {
 	// Устанавливаем заголовки ответа
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(status)
@@ -101,24 +133,28 @@ func writeJSONResponse(w http.ResponseWriter, status int, response map[string]st
 	}
 }
 
+
 // createEventHandler возвращает обработчик для создания событий
 func createEventHandler(calendar *Calendar) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем метод запроса (должен быть POST)
 		if r.Method != http.MethodPost {
-			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
 			return
 		}
 
 		// Парсим данные из запроса
 		event, err := parseCreateEventRequest(r)
 		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
 			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
 
 		// Добавляем событие в календарь
 		if err := calendar.CreateEvent(event); err != nil {
+			// ошибка бизнес-логики, http.StatusServiceUnavailable = 503
 			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": err.Error()})
 			return
 		}
@@ -133,13 +169,15 @@ func updateEventHandler(calendar *Calendar) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем метод запроса (должен быть POST)
 		if r.Method != http.MethodPost {
-			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
 			return
 		}
 
 		// Парсим данные из запроса
 		event, err := parseCreateEventRequest(r)
 		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
 			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": err.Error()})
 			return
 		}
@@ -147,6 +185,7 @@ func updateEventHandler(calendar *Calendar) http.HandlerFunc {
 		// Проверяем, существует ли событие с указанным ID
 		existingEvent, exists := calendar.events[event.ID]
 		if !exists {
+			// ошибка бизнес-логики, http.StatusServiceUnavailable = 503
 			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": fmt.Sprintf("event with ID %d does not exist", event.ID)})
 			return
 		}
@@ -166,12 +205,14 @@ func deleteEventHandler(calendar *Calendar) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Проверяем метод запроса (должен быть POST)
 		if r.Method != http.MethodPost {
-			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
 			return
 		}
 
 		// Парсим данные из запроса (только ID требуется для удаления)
 		if err := r.ParseForm(); err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
 			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid request format"})
 			return
 		}
@@ -179,12 +220,14 @@ func deleteEventHandler(calendar *Calendar) http.HandlerFunc {
 		// Извлекаем и валидируем ID события
 		id, err := strconv.Atoi(r.FormValue("id"))
 		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
 			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid event ID"})
 			return
 		}
 
 		// Проверяем, существует ли событие с указанным ID
 		if _, exists := calendar.events[id]; !exists {
+			// ошибка бизнес-логики, http.StatusServiceUnavailable = 503
 			writeJSONResponse(w, http.StatusServiceUnavailable, map[string]string{"error": fmt.Sprintf("event with ID %d does not exist", id)})
 			return
 		}
@@ -200,36 +243,165 @@ func deleteEventHandler(calendar *Calendar) http.HandlerFunc {
 func getEventsForDayHandler(calendar *Calendar) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != http.MethodGet {
-			writeJSONResponse(w, http.StatusMethodNotAllowed, map[string]string{"error": "method not allowed"})
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
 			return
 		}
 
-		
+		// Получаем параметр date из query
+		dateStr := r.URL.Query().Get("date")
+		if dateStr == "" {
+			// ошибка входных данных, http.StatusBadRequest = 400
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "missing date parameter"})
+			return
+		}
+
+		// Разбираем дату
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid date format, expected YYYY-MM-DD"})
+			return
+		}
+
+		// Получаем события
+		events := calendar.GetEventsForDay(date)
+
+		// Отправляем ответ
+		writeJSONResponse(w, http.StatusOK, map[string]interface{}{"result": events})
 	}
 }
 
+func getEventsForWeekHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		dateStr := r.URL.Query().Get("date")
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid date format"})
+			return
+		}
+
+		startOfWeek, endOfWeek := getWeekRange(date)
+
+		var events []Event
+		for d := startOfWeek; !d.After(endOfWeek); d = d.AddDate(0, 0, 1) {
+			events = append(events, calendar.GetEventsForDay(d)...)	// ...распаковываем срез событий на день
+		}
+
+		writeJSONResponse(w, http.StatusOK, map[string]interface{}{"result": events})
+	}
+}
+// getWeekRange возвращает начало (понедельник) и конец (воскресенье) недели для указанной даты.
+func getWeekRange(date time.Time) (time.Time, time.Time) {
+	// Определяем смещение от понедельника
+	offset := int(date.Weekday()) - 1
+	if offset < 0 { // Если день — воскресенье, делаем его седьмым днём недели
+		offset = 6
+	}
+
+	// Определяем начало недели (понедельник)
+	startOfWeek := date.AddDate(0, 0, -offset).Truncate(24 * time.Hour)
+
+	// Конец недели — воскресенье (понедельник + 6 дней)
+	endOfWeek := startOfWeek.AddDate(0, 0, 6)
+
+	return startOfWeek, endOfWeek
+}
+
+func getEventsForMonthHandler(calendar *Calendar) http.HandlerFunc {
+	return func(w http.ResponseWriter, r *http.Request) {
+		if r.Method != http.MethodGet {
+			// др ошибки, http.StatusInternalServerError = 500
+			writeJSONResponse(w, http.StatusInternalServerError, map[string]string{"error": "method not allowed"})
+			return
+		}
+
+		dateStr := r.URL.Query().Get("date")
+		date, err := time.Parse("2006-01-02", dateStr)
+		if err != nil {
+			// ошибка входных данных, http.StatusBadRequest = 400
+			writeJSONResponse(w, http.StatusBadRequest, map[string]string{"error": "invalid date format"})
+			return
+		}
+
+		startOfMonth, endOfMonth := getMonthRange(date)
+
+		var events []Event
+		for d := startOfMonth; !d.After(endOfMonth); d = d.AddDate(0, 0, 1) {
+			events = append(events, calendar.GetEventsForDay(d)...)	// ...распаковываем срез событий на день
+		}
+
+		writeJSONResponse(w, http.StatusOK, map[string]interface{}{"result": events})
+	}
+}
+
+// getMonthRange возвращает начало (первый день) и конец (последний день) месяца для указанной даты.
+func getMonthRange(date time.Time) (time.Time, time.Time) {
+	// Определяем первый день месяца
+	startOfMonth := time.Date(date.Year(), date.Month(), 1, 0, 0, 0, 0, time.UTC)
+
+	// Определяем последний день месяца
+	endOfMonth := startOfMonth.AddDate(0, 1, -1) // Следующий месяц - 1 день
+
+	return startOfMonth, endOfMonth
+}
+
+// loggingMiddleware оборачивает обработчик и логирует детали каждого запроса.
+func loggingMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
+		// Логирование начала запроса
+		log.Printf("Начало запроса: метод=%s, url=%s", r.Method, r.URL.String())
+
+		// Вызов следующего обработчика
+		next.ServeHTTP(w, r)
+
+		// Логирование завершения запроса с длительностью обработки
+		duration := time.Since(start)
+		log.Printf("Завершение запроса: метод=%s, url=%s, длительность=%s", r.Method, r.URL.String(), duration)
+	})
+}
 
 
 func main() {
+	// Загружаем конфиг
+	config, err := LoadConfig("config.json")
+	if err != nil {
+		log.Fatalf("Failed to load config: %v", err)
+	}
+
+	// Преобразуем порт в строку
+	portStr := strconv.Itoa(config.Port)
+
+	// Проверяем, что порт начинается с ":"
+	if !strings.HasPrefix(portStr, ":") {
+		portStr = ":" + portStr
+	}
+
 	// Создаем новый календарь
 	calendar := NewCalendar()
 
-	// Регистрируем обработчик для создания событий
-	http.HandleFunc("/create_event", createEventHandler(calendar))
-	http.HandleFunc("/update_event", updateEventHandler(calendar))
-	http.HandleFunc("/delete_event", deleteEventHandler(calendar))
+	// Создаем новый ServeMux и регистрируем обработчики
+	mux := http.NewServeMux()
+	mux.HandleFunc("/create_event", createEventHandler(calendar))
+	mux.HandleFunc("/update_event", updateEventHandler(calendar))
+	mux.HandleFunc("/delete_event", deleteEventHandler(calendar))
+	mux.HandleFunc("/events_for_day", getEventsForDayHandler(calendar))
+	mux.HandleFunc("/events_for_week", getEventsForWeekHandler(calendar))
+	mux.HandleFunc("/events_for_month", getEventsForMonthHandler(calendar))
 
-	http.HandleFunc("/events_for_day", getEventsForDayHandler(calendar))
+	// Оборачиваем мультиплексор в мидлвар для логирования запросов
+	loggedMux := loggingMiddleware(mux)
 
-	GET /events_for_day
-
-
-	// Запускаем HTTP сервер
-	port := ":8080"
-	log.Printf("Запуск HTTP сервера на порту %s", port)
-	if err := http.ListenAndServe(port, nil); err != nil {
+	log.Printf("Запуск HTTP сервера на порту %s", portStr)
+	if err := http.ListenAndServe(portStr, loggedMux); err != nil {
 		log.Fatalf("Ошибка запуска сервера: %v", err)
 	}
 }
-
-
