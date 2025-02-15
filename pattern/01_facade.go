@@ -27,66 +27,66 @@ package main
 
 import "fmt"
 
-// Фасад умный дом
-type SmartHomeFacade struct {
-	lights     *Lights
-	curtains   *Curtains
-	thermostat *Thermostat
-	alarm      *Alarm
+// Фасад системы заказа в ресторане
+type RestaurantFacade struct {
+	kitchen    *Kitchen
+	serving    *Serving
+	payment    *Payment
+	notification *Notification
 }
 
 // Конструктор фасада
-func NewSmartHomeFacade() *SmartHomeFacade {
-	return &SmartHomeFacade{
-		lights:     &Lights{},
-		curtains:   &Curtains{},
-		thermostat: &Thermostat{},
-		alarm:      &Alarm{},
+func NewRestaurantFacade() *RestaurantFacade {
+	return &RestaurantFacade{
+		kitchen:      &Kitchen{},
+		serving:      &Serving{},
+		payment:      &Payment{},
+		notification: &Notification{},
 	}
 }
 
-// Включение режима "Спокойной ночи"
-func (s *SmartHomeFacade) GoodNightMode() {
-	fmt.Println("Активация режима `Спокойной ночи`...")
-	s.lights.Off()
-	s.curtains.Close()
-	s.thermostat.SetTemperature(20) // Устанавливаем комфортную температуру
-	s.alarm.Activate()
-	fmt.Println("Режим `Спокойной ночи` активирован!")
+// Оформление заказа
+func (r *RestaurantFacade) PlaceOrder(dish string) {
+	fmt.Println("Обработка заказа...")
+	r.kitchen.PrepareDish(dish)
+	r.serving.ServeDish(dish)
+	r.payment.ProcessPayment()
+	r.notification.SendConfirmation()
+	fmt.Println("Заказ оформлен успешно!")
 }
 
-// Подсистема освещение
-type Lights struct{}
+// Подсистема кухня
+type Kitchen struct{}
 
-func (l *Lights) Off() {
-	fmt.Println("Свет: выключен")
+func (k *Kitchen) PrepareDish(dish string) {
+	fmt.Printf("Кухня: приготовлено блюдо \"%s\"\n", dish)
 }
 
-// Подсистема шторы
-type Curtains struct{}
+// Подсистема подача
+type Serving struct{}
 
-func (c *Curtains) Close() {
-	fmt.Println("Шторы: закрыты")
+func (s *Serving) ServeDish(dish string) {
+	fmt.Printf("Подача: подано блюдо \"%s\"\n", dish)
 }
 
-// Подсистема кондиционер
-type Thermostat struct{}
+// Подсистема оплата
+type Payment struct{}
 
-func (t *Thermostat) SetTemperature(temp int) {
-	fmt.Printf("Кондиционер: Установлена температура %d°C\n", temp)
+func (p *Payment) ProcessPayment() {
+	fmt.Println("Оплата: обработана транзакция")
 }
 
-// Подсистема сигнализация
-type Alarm struct{}
+// Подсистема уведомления
+type Notification struct{}
 
-func (a *Alarm) Activate() {
-	fmt.Println("Сигнализация: активирована")
+func (n *Notification) SendConfirmation() {
+	fmt.Println("Уведомление: отправлено подтверждение заказа")
 }
 
 func main() {
-	// фасад для умного дома
-	smartHome := NewSmartHomeFacade()
+	// фасад для ресторана
+	restaurant := NewRestaurantFacade()
 
-	// режим "Спокойной ночи"
-	smartHome.GoodNightMode()
+	// оформление заказа
+	restaurant.PlaceOrder("Паста карбонара")
 }
